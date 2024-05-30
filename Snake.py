@@ -16,9 +16,11 @@ class SnakeGame:
         pygame.init()
         pygame.display.set_caption('Snake')
         self.main_window = pygame.display.set_mode((self.window_size_x, self.window_size_y))
-
         self.speed = pygame.time.Clock()
 
+        self.reset()
+
+    def reset(self):
         self.snake_head_position = [300, 300]
         self.snake_body = [[300, 300], [290, 300], [280, 300]]
         self.fruit_position = self.random_fruit_position()
@@ -95,13 +97,14 @@ class SnakeGame:
 
     def check_collision(self):
         if self.snake_head_position[0] < 0 or self.snake_head_position[0] > self.window_size_x - 10:
-            self.game_over()
+            return True
         if self.snake_head_position[1] < 0 or self.snake_head_position[1] > self.window_size_y - 10:
-            self.game_over()
+            return True
 
         for block in self.snake_body[1:]:
             if self.snake_head_position[0] == block[0] and self.snake_head_position[1] == block[1]:
-                self.game_over()
+                return True
+        return False
 
     def draw_elements(self):
         self.main_window.fill(self.BACKGROUND_COLOR)
@@ -113,16 +116,21 @@ class SnakeGame:
         self.show_score(self.SCORE_COLOR, 'impact', 20)
         pygame.display.update()
 
-    def run_game(self):
-        while True:
-            self.update_direction()
-            self.move_snake()
-            self.update_snake_body()
-            self.check_fruit_status()
-            self.check_collision()
-            self.draw_elements()
-            self.speed.tick(self.game_speed)
+    def play_step(self):
+        self.update_direction()
+        self.move_snake()
+        self.update_snake_body()
+        self.check_fruit_status()
+
+        game_over = self.check_collision()
+        self.draw_elements()
+        self.speed.tick(self.game_speed)
+
+        return game_over, self.score
 
 if __name__ == "__main__":
     game = SnakeGame()
-    game.run_game()
+    while True:
+        game_over, score = game.play_step()
+        if game_over:
+            game.reset()
