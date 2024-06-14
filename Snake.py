@@ -1,12 +1,15 @@
 import pygame
 import time
 import random
+import numpy as np
+
 
 class SnakeGame:
     def __init__(self):
-        self.game_speed = 15
-        self.window_size_x = 800
-        self.window_size_y = 600
+        self.frame_iteration = 0
+        self.game_speed = 50
+        self.window_size_x = 320
+        self.window_size_y = 240
         self.BACKGROUND_COLOR = pygame.Color(50, 51, 50)
         self.FINAL_SCORE_COLOR = pygame.Color(255, 255, 255)
         self.SCORE_COLOR = pygame.Color(255, 255, 255)
@@ -21,8 +24,11 @@ class SnakeGame:
         self.reset()
 
     def reset(self):
-        self.snake_head_position = [300, 300]
-        self.snake_body = [[300, 300], [290, 300], [280, 300]]
+        # self.snake_head_position = [300, 300]
+        # self.snake_body = [[300, 300], [290, 300], [280, 300]]
+        self.frame_iteration = 0
+        self.snake_head_position = [40, 40]
+        self.snake_body = [[40, 40], [30, 40], [20, 40]]
         self.fruit_position = self.random_fruit_position()
         self.fruit_alive = True
         self.direction = 'RIGHT'
@@ -30,8 +36,11 @@ class SnakeGame:
         self.score = 0
 
     def random_fruit_position(self):
-        return [random.randrange(1, (self.window_size_x // 10)) * 10,
-                random.randrange(1, (self.window_size_y // 10)) * 10]
+        while True:
+            fruit_position = [random.randrange(2, (self.window_size_x // 10 - 1)) * 10, random.randrange(2, (self.window_size_y // 10 - 1)) * 10]
+            if fruit_position not in self.snake_body:
+                return fruit_position
+
 
     def show_score(self, color, font, size):
         score_font = pygame.font.SysFont(font, size)
@@ -63,28 +72,55 @@ class SnakeGame:
                 if event.key == pygame.K_RIGHT and self.direction != 'LEFT':
                     self.next_direction = 'RIGHT'
 
-    def move_snake(self):
-        if self.next_direction == 'UP' and self.direction != 'DOWN':
-            self.direction = 'UP'
-        if self.next_direction == 'DOWN' and self.direction != 'UP':
-            self.direction = 'DOWN'
-        if self.next_direction == 'LEFT' and self.direction != 'RIGHT':
-            self.direction = 'LEFT'
-        if self.next_direction == 'RIGHT' and self.direction != 'LEFT':
-            self.direction = 'RIGHT'
+    def move_snake(self, action):
+        # [straight, right, left]
 
-        if self.direction == 'UP':
+        # clock_wise = [1, 4, 2, 3]
+        clock_wise = ["RIGHT", "DOWN", "LEFT", "UP"]
+        idx = clock_wise.index(self.direction)
+
+        if np.array_equal(action, [1, 0, 0]):
+            new_dir = clock_wise[idx]  # no change
+        elif np.array_equal(action, [0, 1, 0]):
+            next_idx = (idx + 1) % 4
+            new_dir = clock_wise[next_idx]  # right turn r -> d -> l -> u
+        else:  # [0, 0, 1]
+            next_idx = (idx - 1) % 4
+            new_dir = clock_wise[next_idx]  # left turn r -> u -> l -> d
+
+        self.direction = new_dir
+
+        if self.direction == "UP":
             self.snake_head_position[1] -= 10
-        if self.direction == 'DOWN':
+        if self.direction == "DOWN":
             self.snake_head_position[1] += 10
-        if self.direction == 'LEFT':
+        if self.direction == "LEFT":
             self.snake_head_position[0] -= 10
-        if self.direction == 'RIGHT':
+        if self.direction == "RIGHT":
             self.snake_head_position[0] += 10
+
+        # if self.next_direction == 'UP' and self.direction != 'DOWN':
+        #     self.direction = 'UP'
+        # if self.next_direction == 'DOWN' and self.direction != 'UP':
+        #     self.direction = 'DOWN'
+        # if self.next_direction == 'LEFT' and self.direction != 'RIGHT':
+        #     self.direction = 'LEFT'
+        # if self.next_direction == 'RIGHT' and self.direction != 'LEFT':
+        #     self.direction = 'RIGHT'
+
+        # if self.direction == 'UP':
+        #     self.snake_head_position[1] -= 10
+        # if self.direction == 'DOWN':
+        #     self.snake_head_position[1] += 10
+        # if self.direction == 'LEFT':
+        #     self.snake_head_position[0] -= 10
+        # if self.direction == 'RIGHT':
+        #     self.snake_head_position[0] += 10
 
     def update_snake_body(self):
         self.snake_body.insert(0, list(self.snake_head_position))
-        if self.snake_head_position[0] == self.fruit_position[0] and self.snake_head_position[1] == self.fruit_position[1]:
+        if self.snake_head_position[0] == self.fruit_position[0] and self.snake_head_position[1] == self.fruit_position[
+            1]:
             self.score += 1
             self.fruit_alive = False
         else:
@@ -95,14 +131,17 @@ class SnakeGame:
             self.fruit_position = self.random_fruit_position()
         self.fruit_alive = True
 
-    def check_collision(self):
-        if self.snake_head_position[0] < 0 or self.snake_head_position[0] > self.window_size_x - 10:
+    def check_collision(self, pt = None):
+
+        if pt is None:
+            pt = self.snake_head_position
+        if pt[0] < 0 or pt[0] > self.window_size_x - 10:
             return True
-        if self.snake_head_position[1] < 0 or self.snake_head_position[1] > self.window_size_y - 10:
+        if pt[1] < 0 or pt[1] > self.window_size_y - 10:
             return True
 
         for block in self.snake_body[1:]:
-            if self.snake_head_position[0] == block[0] and self.snake_head_position[1] == block[1]:
+            if pt[0] == block[0] and pt[1] == block[1]:
                 return True
         return False
 
@@ -116,17 +155,26 @@ class SnakeGame:
         self.show_score(self.SCORE_COLOR, 'impact', 20)
         pygame.display.update()
 
-    def play_step(self):
+    def play_step(self, action):
+        self.frame_iteration += 1
         self.update_direction()
-        self.move_snake()
+        self.move_snake(action)
         self.update_snake_body()
+        reward = 0
+        if self.fruit_alive == False:
+            reward = 10
         self.check_fruit_status()
 
-        game_over = self.check_collision()
         self.draw_elements()
         self.speed.tick(self.game_speed)
 
-        return game_over, self.score
+        game_over = False
+        if self.check_collision() or self.frame_iteration > 100*len(self.snake_body):
+            game_over = True;
+            reward = -10
+
+        return reward, game_over, self.score
+
 
 if __name__ == "__main__":
     game = SnakeGame()
